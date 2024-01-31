@@ -6,17 +6,20 @@
 //
 
 import UIKit
+import Pomosch
+import Kingfisher
 
 class ViewController: UIViewController {
     
-    var names: [String] = ["Alexander", "Ivan", "Sergey"]
-
+    private var viewModel = WardListViewModel()
+    
     private lazy var myTableView: UITableView = {
         let table = UITableView(frame: .zero, style: .plain)
         table.translatesAutoresizingMaskIntoConstraints = false
         table.rowHeight = UITableView.automaticDimension
         table.delegate = self
         table.dataSource = self
+        table.register(UITableViewCell.self, forCellReuseIdentifier: "CellIdentifier")
         return table
     }()
     
@@ -24,7 +27,16 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         setupView()
         setupConstraints()
+        loadMore()
+        
     }
+    
+    private func loadMore() {
+        viewModel.fetchWards { [weak self] in
+            self?.myTableView.reloadData()
+        }
+    }
+
     
     private func setupView() {
         title = "Список подопечных"
@@ -40,7 +52,6 @@ class ViewController: UIViewController {
     
     private func setupConstraints() {
         
-//        myTableView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         NSLayoutConstraint.activate([
             
             myTableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -53,32 +64,41 @@ class ViewController: UIViewController {
 }
 
 extension ViewController: UITableViewDelegate {
-    
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        true
-    }
-    
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            names.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
-        }
-    }
 }
 
 extension ViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return names.count
+        return viewModel.wards.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell()
-        var configuration = UIListContentConfiguration.cell()
-        configuration.text = names[indexPath.row]
-        configuration.image = UIImage(named: "19")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "CellIdentifier", for: indexPath)
+        let ward = viewModel.wards[indexPath.row]
+        var backgroundConfiguration = cell.defaultBackgroundConfiguration()
+        backgroundConfiguration.imageContentMode = .scaleAspectFill
+        cell.backgroundConfiguration = backgroundConfiguration
+        
+        var configuration = cell.defaultContentConfiguration()
+        configuration.text = ward.name
+        
+        if let url = URL(string: ward.photoUrlString) {
+            KingfisherManager.shared.retrieveImage(with: url) { result in
+               let image = try? result.get().image
+                configuration.image = image
+                cell.contentConfiguration = configuration
+                
+            }
+        }
+        
         cell.contentConfiguration = configuration
         return cell
     }
-
+    
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row == viewModel.wards.count - 1 {
+            loadMore()
+        }
+    }
 }
+

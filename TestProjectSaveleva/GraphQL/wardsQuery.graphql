@@ -1,0 +1,19 @@
+query Wards($first: Int, $after: String, $order: [WardSortInput!]) {
+  wards(first: $first, after: $after, order: $order){
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    nodes {
+      publicInformation {
+        name {
+          displayName
+        }
+        photo {
+          url(variant: "small")
+        }
+      }
+    }
+  } 
+} 
+
